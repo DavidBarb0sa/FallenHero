@@ -19,12 +19,15 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
     private lateinit var laserPaint: Paint
 
     // Game Objects
+    private lateinit var background: Background
     private lateinit var player: Player
     private lateinit var boom: Boom
-    private lateinit var verticalLaser: Laser // Renamed for clarity
+    private lateinit var verticalLaser: Laser
     private lateinit var horizontalLaser: HorizontalLaser
     private val orbs = ArrayList<Orb>()
     private val enemies = ArrayList<Enemy>()
+    private val shooterEnemies = ArrayList<ShooterEnemy>()
+    private val bullets = ArrayList<Bullet>()
 
     // Input state
     private var isTouching = false
@@ -44,15 +47,15 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         paint = Paint()
         laserPaint = Paint().apply { color = Color.MAGENTA }
 
+        background = Background(context, width, height)
         player = Player(context, width, height)
         boom = Boom(context, width, height)
         verticalLaser = Laser(height)
         horizontalLaser = HorizontalLaser(width)
 
-        // Add one orb to the game
         orbs.add(Orb(context, width, height))
-
-        repeat(3) { enemies.add(Enemy(context, width, height)) }
+        repeat(2) { enemies.add(Enemy(context, width, height)) } // 2 normal enemies
+        shooterEnemies.add(ShooterEnemy(context, width, height)) // 1 shooter enemy
 
         SoundManager.init(context)
     }
@@ -77,99 +80,165 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
     }
 
     private fun update() {
+        background.update()
         player.isBoosting = isTouching
-        // Pass the power-up state to the player's update method
         player.update(horizontalLaser.isActive)
 
-        // Update lasers and power-ups
         verticalLaser.update(isTouching, player)
         horizontalLaser.update(player)
 
         val backgroundSpeed = 10
 
-        // Update Orbs and check for collision with player
+        // Orbs
         for (orb in orbs) {
             orb.update()
             if (Rect.intersects(player.collisionBox, orb.collisionBox)) {
                 orbsCollected++
-                orb.reset() // Reset the orb so it reappears
-
+                orb.reset()
                 if (orbsCollected >= orbsNeededForPowerup) {
-                    horizontalLaser.activate() // Activate the power-up
-                    orbsCollected = 0 // Reset the counter
+                    horizontalLaser.activate()
+                    orbsCollected = 0
                 }
             }
         }
 
-        // Update Enemies
+        // Standard Enemies
+        handleStandardEnemies()
+
+        // Shooter Enemies
+        handleShooterEnemies(backgroundSpeed)
+
+        // Bullets
+        handleBullets()
+
+        boom.update()
+    }
+
+    private fun handleStandardEnemies() {
         for (enemy in enemies) {
-            enemy.update(backgroundSpeed)
+            enemy.update(10)
+            checkCollisions(enemy)
+        }
+    }
 
-            var enemyDestroyed = false
+    private fun handleShooterEnemies(backgroundSpeed: Int) {
+        for (shooter in shooterEnemies) {
+            shooter.update(backgroundSpeed)
+            checkCollisions(shooter)
 
-            // 1. Check for horizontal laser (power-up) collision
-            if (horizontalLaser.isActive && horizontalLaser.collisionRect != null) {
-                if (Rect.intersects(horizontalLaser.collisionRect!!, enemy.collisionBox)) {
-                    triggerExplosion(enemy.x, enemy.y)
-                    score += 20 // More points for a power-up kill
-                    enemy.x = -300 // Move enemy off-screen
-                    enemyDestroyed = true
-                }
+            if (shooter.canShoot()) {
+                bullets.add(shooter.shoot(player))
+                // You could play a shoot sound here
+            }
+        }
+    }
+
+    private fun handleBullets() {
+        val iterator = bullets.iterator()
+        while (iterator.hasNext()) {
+            val bullet = iterator.next()
+            bullet.update()
+            if (bullet.isOffScreen(screenWidth, screenHeight)) {
+                iterator.remove()
+                continue
             }
 
-            // 2. If not destroyed, check for vertical laser collision
-            if (!enemyDestroyed && verticalLaser.isActive && verticalLaser.collisionRect != null) {
-                if (Rect.intersects(verticalLaser.collisionRect!!, enemy.collisionBox)) {
-                    triggerExplosion(enemy.x, enemy.y)
-                    score += 100
-                    enemy.x = -300
-                    enemyDestroyed = true
-                }
-            }
-
-            // 3. If still not destroyed, check for player collision
-            if (!enemyDestroyed && Rect.intersects(enemy.collisionBox, player.collisionBox)) {
-                triggerExplosion(enemy.x, enemy.y)
-                enemy.x = -300
+            if (Rect.intersects(bullet.collisionBox, player.collisionBox)) {
                 player.health--
-
+                iterator.remove() // Remove bullet on impact
                 if (player.health <= 0 && !isGameOver) {
                     triggerGameOver()
                     return
                 }
             }
         }
-
-        boom.update()
     }
+
+    // Generic collision check for any enemy type
+    private fun checkCollisions(enemy: Any) {
+        val enemyBox: Rect
+        var enemyX: Int
+        var enemyY: Int
+
+        when (enemy) {
+            is Enemy -> {
+                enemyBox = enemy.collisionBox
+                enemyX = enemy.x
+                enemyY = enemy.y
+            }
+            is ShooterEnemy -> {
+                enemyBox = enemy.collisionBox
+                enemyX = enemy.x
+                enemyY = enemy.y
+            }
+            else -> return
+        }
+
+        var destroyed = false
+
+        // Horizontal laser collision
+        if (horizontalLaser.isActive && horizontalLaser.collisionRect != null && Rect.intersects(horizontalLaser.collisionRect!!, enemyBox)) {
+            triggerExplosion(enemyX, enemyY)
+            score += 20
+            destroyed = true
+        }
+
+        // Vertical laser collision
+        if (!destroyed && verticalLaser.isActive && verticalLaser.collisionRect != null && Rect.intersects(verticalLaser.collisionRect!!, enemyBox)) {
+            triggerExplosion(enemyX, enemyY)
+            score += 10
+            destroyed = true
+        }
+
+        // Player collision
+        if (!destroyed && Rect.intersects(player.collisionBox, enemyBox)) {
+            triggerExplosion(enemyX, enemyY)
+            player.health--
+            destroyed = true
+            if (player.health <= 0 && !isGameOver) {
+                triggerGameOver()
+                return
+            }
+        }
+
+        if (destroyed) {
+            when (enemy) {
+                is Enemy -> enemy.x = -300
+                is ShooterEnemy -> enemy.x = -300
+            }
+        }
+    }
+
 
     private fun drawGame() {
         if (!surfaceHolder.surface.isValid) return
 
         canvas = surfaceHolder.lockCanvas()
-        canvas.drawColor(Color.BLACK)
+        
+        // Draw Background first
+        background.draw(canvas)
 
-        // Draw Orbs
-        for (orb in orbs) {
-            canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
-        }
-
-        // Draw Enemies
-        for (enemy in enemies) {
-            canvas.drawBitmap(enemy.bitmap, enemy.x.toFloat(), enemy.y.toFloat(), paint)
-        }
-
-        // Draw Player
+        // Draw Orbs, Enemies, and Player
+        for (orb in orbs) canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
+        for (enemy in enemies) canvas.drawBitmap(enemy.bitmap, enemy.x.toFloat(), enemy.y.toFloat(), paint)
+        for (shooter in shooterEnemies) canvas.drawBitmap(shooter.bitmap, shooter.x.toFloat(), shooter.y.toFloat(), paint)
         canvas.drawBitmap(player.bitmap, player.x.toFloat(), player.y.toFloat(), paint)
 
-        // Draw Lasers
+        // Draw Bullets and Lasers
+        for (bullet in bullets) bullet.draw(canvas)
         verticalLaser.draw(canvas, laserPaint)
         horizontalLaser.draw(canvas)
 
         // Draw Boom
         canvas.drawBitmap(boom.bitmap, boom.x.toFloat(), boom.y.toFloat(), paint)
 
-        // UI - Score, Orbs, and Lives
+        // UI
+        drawUI()
+
+        surfaceHolder.unlockCanvasAndPost(canvas)
+    }
+
+    private fun drawUI() {
         paint.color = Color.WHITE
         paint.textSize = 60f
         canvas.drawText("Score: $score", 50f, 80f, paint)
@@ -187,14 +256,10 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         val barMarginVertical = 10f
         val barWidth = width - (barMarginHorizontal * 2)
         val energyPercentage = verticalLaser.getEnergyPercentage()
-
         paint.color = Color.GRAY
         canvas.drawRect(barMarginHorizontal, barMarginVertical, barMarginHorizontal + barWidth, barMarginVertical + barHeight, paint)
-
-        laserPaint.alpha = 200 // Slightly transparent
+        laserPaint.alpha = 200
         canvas.drawRect(barMarginHorizontal, barMarginVertical, barMarginHorizontal + (barWidth * energyPercentage), barMarginVertical + barHeight, laserPaint)
-
-        surfaceHolder.unlockCanvasAndPost(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

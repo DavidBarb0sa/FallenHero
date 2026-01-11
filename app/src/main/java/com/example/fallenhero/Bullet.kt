@@ -1,42 +1,50 @@
 package com.example.fallenhero
 
-import kotlin.math.cos
-import kotlin.math.sin
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
+import kotlin.math.sqrt
 
-class Bullet {
+class Bullet(startX: Float, startY: Float, targetX: Float, targetY: Float) {
+    var x: Float = startX
+    var y: Float = startY
+    private var velocityX: Float
+    private var velocityY: Float
+    val width = 25
+    val height = 10
 
-    var active = false
+    var collisionBox: Rect
+    private val paint = Paint().apply { color = Color.YELLOW }
 
-    var x = 0f
-    var y = 0f
 
-    private var vx = 0f
-    private var vy = 0f
+    init {
+        val dx = targetX - startX
+        val dy = targetY - startY
+        val distance = sqrt(dx * dx + dy * dy)
+        val speed = 20f
 
-    private val speed = 25f
+        velocityX = (dx / distance) * speed
+        velocityY = (dy / distance) * speed
 
-    fun fire(startX: Int, startY: Int, angle: Float) {
-        x = startX.toFloat()
-        y = startY.toFloat()
-
-        vx = cos(Math.toRadians(angle.toDouble())).toFloat() * speed
-        vy = sin(Math.toRadians(angle.toDouble())).toFloat() * speed
-
-        active = true
+        collisionBox = Rect(x.toInt(), y.toInt(), (x + width).toInt(), (y + height).toInt())
     }
 
     fun update() {
-        if (!active) return
+        x += velocityX
+        y += velocityY
 
-        x += vx
-        y += vy
+        collisionBox.left = x.toInt()
+        collisionBox.top = y.toInt()
+        collisionBox.right = (x + width).toInt()
+        collisionBox.bottom = (y + height).toInt()
     }
 
-    fun deactivate() {
-        active = false
+    fun draw(canvas: Canvas) {
+        canvas.drawRect(collisionBox, paint)
     }
 
-    fun isOutOfScreen(screenWidth: Int, screenHeight: Int): Boolean {
-        return x < 0 || x > screenWidth || y < 0 || y > screenHeight
+    fun isOffScreen(screenWidth: Int, screenHeight: Int): Boolean {
+        return x < -width || x > screenWidth || y < -height || y > screenHeight
     }
 }
