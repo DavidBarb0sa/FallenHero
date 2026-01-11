@@ -7,7 +7,7 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 
-class GameView : SurfaceView, Runnable {
+class GameView(context: Context, private val screenWidth: Int, private val screenHeight: Int) : SurfaceView(context), Runnable {
 
     private var gameThread: Thread? = null
     private var isPlaying = false
@@ -18,29 +18,26 @@ class GameView : SurfaceView, Runnable {
     private lateinit var paint: Paint
     private lateinit var laserPaint: Paint
 
+    // Game Objects
     private lateinit var player: Player
     private lateinit var boom: Boom
-    private lateinit var laser: Laser
-
+    private lateinit var verticalLaser: Laser // Renamed for clarity
+    private lateinit var horizontalLaser: HorizontalLaser
+    private val orbs = ArrayList<Orb>()
     private val enemies = ArrayList<Enemy>()
 
     // Input state
     private var isTouching = false
 
-    //GAME STATE
+    // Game State
     private var score = 0
+    private var orbsCollected = 0
+    private val orbsNeededForPowerup = 3
     var onGameOver: ((Int) -> Unit)? = null
 
-    //SOUND
-
-    constructor(context: Context, width: Int, height: Int) : super(context) {
-        init(context, width, height)
+    init {
+        init(context, screenWidth, screenHeight)
     }
-
-    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs)
-
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int)
-            : super(context, attrs, defStyleAttr)
 
     private fun init(context: Context, width: Int, height: Int) {
         surfaceHolder = holder
@@ -49,14 +46,16 @@ class GameView : SurfaceView, Runnable {
 
         player = Player(context, width, height)
         boom = Boom(context, width, height)
-        laser = Laser(height)
+        verticalLaser = Laser(height)
+        horizontalLaser = HorizontalLaser(width)
+
+        // Add one orb to the game
+        orbs.add(Orb(context, width, height))
 
         repeat(3) { enemies.add(Enemy(context, width, height)) }
 
         SoundManager.init(context)
     }
-
-    //GAME LOOP
 
     override fun run() {
         while (isPlaying) {
@@ -78,36 +77,60 @@ class GameView : SurfaceView, Runnable {
     }
 
     private fun update() {
-        // Player always boosts if the screen is being touched.
         player.isBoosting = isTouching
+        // Pass the power-up state to the player's update method
+        player.update(horizontalLaser.isActive)
 
-        // Update player & laser based on the input.
-        player.update()
-        laser.update(isTouching, player)
+        // Update lasers and power-ups
+        verticalLaser.update(isTouching, player)
+        horizontalLaser.update(player)
 
-        // Parallax speed for background elements
         val backgroundSpeed = 10
 
-        // Enemies
+        // Update Orbs and check for collision with player
+        for (orb in orbs) {
+            orb.update()
+            if (Rect.intersects(player.collisionBox, orb.collisionBox)) {
+                orbsCollected++
+                orb.reset() // Reset the orb so it reappears
+
+                if (orbsCollected >= orbsNeededForPowerup) {
+                    horizontalLaser.activate() // Activate the power-up
+                    orbsCollected = 0 // Reset the counter
+                }
+            }
+        }
+
+        // Update Enemies
         for (enemy in enemies) {
             enemy.update(backgroundSpeed)
 
             var enemyDestroyed = false
 
-            // 1. Check for laser collision
-            laser.collisionRect?.let {
-                if (laser.isActive && Rect.intersects(it, enemy.collisionBox)) {
+            // 1. Check for horizontal laser (power-up) collision
+            if (horizontalLaser.isActive && horizontalLaser.collisionRect != null) {
+                if (Rect.intersects(horizontalLaser.collisionRect!!, enemy.collisionBox)) {
                     triggerExplosion(enemy.x, enemy.y)
-                    score += 100
+                    score += 20 // More points for a power-up kill
                     enemy.x = -300 // Move enemy off-screen
                     enemyDestroyed = true
                 }
             }
 
-            // 2. If not destroyed by laser, check for player collision
+            // 2. If not destroyed, check for vertical laser collision
+            if (!enemyDestroyed && verticalLaser.isActive && verticalLaser.collisionRect != null) {
+                if (Rect.intersects(verticalLaser.collisionRect!!, enemy.collisionBox)) {
+                    triggerExplosion(enemy.x, enemy.y)
+                    score += 100
+                    enemy.x = -300
+                    enemyDestroyed = true
+                }
+            }
+
+            // 3. If still not destroyed, check for player collision
             if (!enemyDestroyed && Rect.intersects(enemy.collisionBox, player.collisionBox)) {
                 triggerExplosion(enemy.x, enemy.y)
-                enemy.x = -300 // Move enemy off-screen
+                enemy.x = -300
                 player.health--
 
                 if (player.health <= 0 && !isGameOver) {
@@ -126,24 +149,33 @@ class GameView : SurfaceView, Runnable {
         canvas = surfaceHolder.lockCanvas()
         canvas.drawColor(Color.BLACK)
 
-        // Enemies
+        // Draw Orbs
+        for (orb in orbs) {
+            canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
+        }
+
+        // Draw Enemies
         for (enemy in enemies) {
             canvas.drawBitmap(enemy.bitmap, enemy.x.toFloat(), enemy.y.toFloat(), paint)
         }
 
-        // Player (no rotation)
+        // Draw Player
         canvas.drawBitmap(player.bitmap, player.x.toFloat(), player.y.toFloat(), paint)
 
-        // Laser beam
-        laser.draw(canvas, laserPaint)
+        // Draw Lasers
+        verticalLaser.draw(canvas, laserPaint)
+        horizontalLaser.draw(canvas)
 
-        // Boom
+        // Draw Boom
         canvas.drawBitmap(boom.bitmap, boom.x.toFloat(), boom.y.toFloat(), paint)
 
-        // UI - Score and Lives
+        // UI - Score, Orbs, and Lives
         paint.color = Color.WHITE
         paint.textSize = 60f
         canvas.drawText("Score: $score", 50f, 80f, paint)
+
+        paint.textSize = 40f
+        canvas.drawText("Orbs: $orbsCollected / $orbsNeededForPowerup", 50f, 130f, paint)
 
         val livesText = "Vidas: ${player.health}"
         val textWidth = paint.measureText(livesText)
@@ -151,10 +183,10 @@ class GameView : SurfaceView, Runnable {
 
         // UI - Laser Energy Bar
         val barHeight = 20f
-        val barMarginHorizontal = 500f
-        val barMarginVertical = 50f
+        val barMarginHorizontal = 100f
+        val barMarginVertical = 10f
         val barWidth = width - (barMarginHorizontal * 2)
-        val energyPercentage = laser.getEnergyPercentage()
+        val energyPercentage = verticalLaser.getEnergyPercentage()
 
         paint.color = Color.GRAY
         canvas.drawRect(barMarginHorizontal, barMarginVertical, barMarginHorizontal + barWidth, barMarginVertical + barHeight, paint)
@@ -165,20 +197,13 @@ class GameView : SurfaceView, Runnable {
         surfaceHolder.unlockCanvasAndPost(canvas)
     }
 
-    // INPUT
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                isTouching = true
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                isTouching = false
-            }
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> isTouching = true
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> isTouching = false
         }
         return true
     }
-
-    //HELPERS
 
     private fun triggerExplosion(x: Int, y: Int) {
         boom.isOnScreen = true

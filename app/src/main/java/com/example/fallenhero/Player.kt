@@ -16,6 +16,10 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
     var health = 3
     var bitmap: Bitmap
 
+    // Bitmaps for different states
+    private val playerBitmap: Bitmap
+    private val playerBoostingBitmap: Bitmap
+
     // Physics variables for Jetpack Joyride style movement
     private var velocityY = 0f
     private val gravity = 1.5f  // Force pulling the player down
@@ -27,11 +31,19 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
     var collisionBox : Rect
 
     init {
+        // Load and scale the default player sprite
         val originalBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.player)
         val scaleFactor = 0.5f
         val newWidth = (originalBitmap.width * scaleFactor).toInt()
         val newHeight = (originalBitmap.height * scaleFactor).toInt()
-        bitmap = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, false)
+        playerBitmap = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, false)
+
+        // Load and scale the boosting player sprite
+        val originalBoostingBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.player2)
+        playerBoostingBitmap = Bitmap.createScaledBitmap(originalBoostingBitmap, newWidth, newHeight, false)
+
+        // Set the initial bitmap
+        bitmap = playerBitmap
 
         width = bitmap.width
         height = bitmap.height
@@ -45,7 +57,14 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
         collisionBox = Rect(x, y, width, height)
     }
 
-    fun update(){
+    fun update(isPowerUpActive: Boolean){
+        // Switch bitmap based on boosting state or if power up is active
+        bitmap = if (isPowerUpActive || isBoosting) {
+            playerBoostingBitmap
+        } else {
+            playerBitmap
+        }
+
         // Apply gravity every frame
         velocityY += gravity
 
