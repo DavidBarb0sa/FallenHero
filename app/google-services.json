@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "134796194130",
+    "project_id": "projetofinal-bdff7",
+    "storage_bucket": "projetofinal-bdff7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:134796194130:android:de4685debd7e5776b88a8b",
+        "android_client_info": {
+          "package_name": "com.example.fallenhero"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJcTxqnSVR51jhMs6Z-VmLJsxnxC-lNMs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
