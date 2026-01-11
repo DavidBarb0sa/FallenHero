@@ -28,7 +28,7 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
 
     init {
         val originalBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.player)
-        val scaleFactor = 0.75f
+        val scaleFactor = 0.5f
         val newWidth = (originalBitmap.width * scaleFactor).toInt()
         val newHeight = (originalBitmap.height * scaleFactor).toInt()
         bitmap = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, false)

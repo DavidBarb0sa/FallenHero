@@ -98,7 +98,7 @@ class GameView : SurfaceView, Runnable {
             laser.collisionRect?.let {
                 if (laser.isActive && Rect.intersects(it, enemy.collisionBox)) {
                     triggerExplosion(enemy.x, enemy.y)
-                    score += 10
+                    score += 100
                     enemy.x = -300 // Move enemy off-screen
                     enemyDestroyed = true
                 }
@@ -151,8 +151,8 @@ class GameView : SurfaceView, Runnable {
 
         // UI - Laser Energy Bar
         val barHeight = 20f
-        val barMarginHorizontal = 100f
-        val barMarginVertical = 10f
+        val barMarginHorizontal = 500f
+        val barMarginVertical = 50f
         val barWidth = width - (barMarginHorizontal * 2)
         val energyPercentage = laser.getEnergyPercentage()
 
