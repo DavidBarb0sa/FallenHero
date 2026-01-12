@@ -23,21 +23,21 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
     private lateinit var player: Player
     private lateinit var boom: Boom
     private lateinit var verticalLaser: Laser
-    private lateinit var horizontalLaser: HorizontalLaser
-    private val orbs = ArrayList<Orb>()
+    private lateinit var horizontalLaser: HorizontalLaser // The orb power-up
+    private lateinit var shield: Shield // The player's active shield effect
+    private lateinit var shieldItem: ShieldItem // The new collectible shield item
+    private val orbs = ArrayList<Orb>() // Orbs for the horizontal laser
     private val enemies = ArrayList<Enemy>()
     private val shooterEnemies = ArrayList<ShooterEnemy>()
-    
-    // --- Object Pool for Bullets ---
-    private val bulletPool = ArrayList<Bullet>()
-    private val maxBullets = 20 // The maximum number of bullets on screen at once
 
-    // Power-up Button
+    private val bulletPool = ArrayList<Bullet>()
+    private val maxBullets = 20
+
+    // Orb Power-up system (restored)
     private val powerUpButtonBitmaps = ArrayList<Bitmap>()
     private lateinit var powerUpButtonRect: Rect
     private val buttonPaint = Paint()
 
-    // Input state
     private var isFlying = false
 
     // Game State
@@ -60,18 +60,21 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         player = Player(context, width, height)
         boom = Boom(context, width, height)
         verticalLaser = Laser(height)
-        horizontalLaser = HorizontalLaser(width)
+        horizontalLaser = HorizontalLaser(width) // Restore horizontal laser
+        shield = Shield(context) // Shield effect
+        shieldItem = ShieldItem(context, width, height) // The collectible shield item
 
-        // Create the object pool for bullets
         for (i in 0 until maxBullets) {
             bulletPool.add(Bullet())
         }
 
+        // Restore orbs
         orbs.add(Orb(context, width, height))
+        
         repeat(2) { enemies.add(Enemy(context, width, height)) }
         shooterEnemies.add(ShooterEnemy(context, width, height))
 
-        // Load button sprites
+        // Restore power-up button for orbs
         val buttonResIds = listOf(R.drawable.btn0, R.drawable.btn1, R.drawable.btn2, R.drawable.btn3)
         var buttonWidth = 0
         var buttonHeight = 0
@@ -117,20 +120,32 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
 
         verticalLaser.update(isFlying, player)
         horizontalLaser.update(player)
+        shield.isActive = player.hasShield
 
-        // Orb collection
-        for (orb in orbs) {
-            orb.update()
-            if (Collision.checkPlayerCollision(player, orb.collisionBox)) {
-                if (orbsCollected < orbsNeededForPowerup) {
-                    orbsCollected++
-                }
-                orb.reset()
-            }
-        }
+        // --- System 1: Orb Collection for Horizontal Laser ---
         isPowerUpAvailable = orbsCollected >= orbsNeededForPowerup
 
-        // Enemies and bullets
+        if (!isPowerUpAvailable) {
+            for (orb in orbs) {
+                orb.update()
+                if (Collision.checkPlayerCollision(player, orb.collisionBox)) {
+                    if (orbsCollected < orbsNeededForPowerup) {
+                        orbsCollected++
+                    }
+                    orb.reset()
+                }
+            }
+        }
+
+        // --- System 2: Shield Item Logic ---
+        if (!player.hasShield) {
+            shieldItem.update()
+            if (Collision.checkPlayerCollision(player, shieldItem.collisionBox)) {
+                player.hasShield = true
+                shieldItem.reset()
+            }
+        }
+
         handleStandardEnemies()
         handleShooterEnemies()
         handleBullets()
@@ -151,13 +166,9 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
             checkCollisions(shooter)
 
             if (shooter.canShoot(player)) {
-                // Find an inactive bullet in the pool.
                 val bullet = bulletPool.firstOrNull { !it.isActive }
                 if (bullet != null) {
-                    // Tell the bullet to reset itself using the shooter and player.
-                    // NO NEW OBJECTS ARE CREATED HERE.
                     bullet.reset(shooter, player)
-                    // Tell the shooter that a shot was fired to reset its cooldown.
                     shooter.onShotFired()
                 }
             }
@@ -170,17 +181,13 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
                 bullet.update()
 
                 if (bullet.isOffScreen(screenWidth, screenHeight)) {
-                    bullet.isActive = false // Deactivate instead of removing
+                    bullet.isActive = false
                     continue
                 }
 
                 if (Collision.checkPlayerCollision(player, bullet.collisionBox)) {
-                    player.health--
-                    bullet.isActive = false // Deactivate on impact
-                    if (player.health <= 0 && !isGameOver) {
-                        triggerGameOver()
-                        return
-                    }
+                    bullet.isActive = false
+                    handlePlayerDamage()
                 }
             }
         }
@@ -206,14 +213,25 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
             triggerExplosion(enemyX, enemyY); score += 100; destroyed = true
         }
         if (!destroyed && Collision.checkPlayerCollision(player, enemyBox)) {
-            triggerExplosion(enemyX, enemyY); player.health--; destroyed = true
-            if (player.health <= 0 && !isGameOver) { triggerGameOver(); return }
+            triggerExplosion(enemyX, enemyY); destroyed = true
+            handlePlayerDamage()
         }
 
         if (destroyed) {
             when (enemy) {
                 is Enemy -> enemy.x = -300
                 is ShooterEnemy -> enemy.x = -300
+            }
+        }
+    }
+
+    private fun handlePlayerDamage() {
+        if (player.hasShield) {
+            player.hasShield = false
+        } else {
+            player.health--
+            if (player.health <= 0 && !isGameOver) {
+                triggerGameOver()
             }
         }
     }
@@ -225,18 +243,25 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         
         background.draw(canvas)
 
-        for (orb in orbs) canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
+        // Draw collectibles
+        if (!isPowerUpAvailable) {
+            for (orb in orbs) canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
+        }
+        if (!player.hasShield) {
+            canvas.drawBitmap(shieldItem.bitmap, shieldItem.x.toFloat(), shieldItem.y.toFloat(), paint)
+        }
         
         for (enemy in enemies) canvas.drawBitmap(enemy.bitmap, enemy.x.toFloat(), enemy.y.toFloat(), paint)
         for (shooter in shooterEnemies) canvas.drawBitmap(shooter.bitmap, shooter.x.toFloat(), shooter.y.toFloat(), paint)
         
         canvas.drawBitmap(player.bitmap, player.x.toFloat(), player.y.toFloat(), paint)
+        shield.draw(canvas, player, paint)
         
-        // Draw only active bullets from the pool
         for (bullet in bulletPool) {
             bullet.draw(canvas)
         }
         
+        // Draw both lasers
         verticalLaser.draw(canvas, laserPaint)
         horizontalLaser.draw(canvas)
 
@@ -257,8 +282,8 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         canvas.drawText(livesText, screenWidth - textWidth - 50f, 80f, paint)
 
         val barHeight = 20f
-        val barMarginHorizontal = 500f
-        val barMarginVertical = 50f
+        val barMarginHorizontal = 100f
+        val barMarginVertical = 10f
         val barWidth = screenWidth - (barMarginHorizontal * 2)
         val energyPercentage = verticalLaser.getEnergyPercentage()
         paint.color = Color.GRAY
@@ -266,7 +291,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         laserPaint.alpha = 200
         canvas.drawRect(barMarginHorizontal, barMarginVertical, barMarginHorizontal + (barWidth * energyPercentage), barMarginVertical + barHeight, laserPaint)
 
-        // Draw the correct power-up button based on orbs collected
+        // Draw the orb power-up button
         val buttonIndex = orbsCollected.coerceIn(0, powerUpButtonBitmaps.size - 1)
         val currentButtonBitmap = powerUpButtonBitmaps[buttonIndex]
         canvas.drawBitmap(currentButtonBitmap, powerUpButtonRect.left.toFloat(), powerUpButtonRect.top.toFloat(), buttonPaint)
@@ -278,9 +303,10 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                // Check for orb power-up button click
                 if (powerUpButtonRect.contains(touchX.toInt(), touchY.toInt())) {
                     if (isPowerUpAvailable) {
-                        horizontalLaser.activate()
+                        horizontalLaser.activate() // It activates the laser, as it should
                         orbsCollected = 0
                         isPowerUpAvailable = false
                     }

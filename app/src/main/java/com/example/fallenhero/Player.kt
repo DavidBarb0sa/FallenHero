@@ -14,6 +14,7 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
 
     var isBoosting = false
     var health = 3
+    var hasShield = false // Shield state
     var bitmap: Bitmap
 
     // Bitmaps for different states
@@ -23,7 +24,7 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
     // Physics variables for Jetpack Joyride style movement
     private var velocityY = 0f
     private val gravity = 3f  // Increased from 1.5f for a heavier feel
-    private val lift = -7f      // Upward force when boosting
+    private val lift = -7f    // Upward force when boosting
 
     val width : Int
     val height : Int
