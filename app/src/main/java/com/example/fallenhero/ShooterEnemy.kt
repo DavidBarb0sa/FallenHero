@@ -24,7 +24,7 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
     // Shooting mechanics
     private var shootCooldown = 0
     private val shootInterval = 120 // Approx. 2 seconds (120 frames at 60fps)
-    private val minShootingDistance = 250 // Don't shoot if closer than this on the X-axis
+    private val minShootingDistance = 500 // Don't shoot if the player is closer than this on the X-axis
     private val random = Random()
 
     init {
@@ -69,12 +69,12 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
 
     fun canShoot(player: Player): Boolean {
         val distanceToPlayer = this.x - player.x
+        // The enemy can shoot as long as the player is further than the minimum distance
         return shootCooldown <= 0 && distanceToPlayer > minShootingDistance
     }
 
     /**
      * This function simply resets the cooldown timer after a shot has been fired.
-     * It no longer creates or returns any data.
      */
     fun onShotFired() {
         shootCooldown = shootInterval

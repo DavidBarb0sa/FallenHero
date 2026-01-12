@@ -3,7 +3,6 @@ package com.example.fallenhero
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Rect
 
 class Player(context: Context, screenWidth: Int, screenHeight: Int) {
 
@@ -14,7 +13,7 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
 
     var isBoosting = false
     var health = 3
-    var hasShield = false // Shield state
+    var hasShield = false
     var bitmap: Bitmap
 
     // Bitmaps for different states
@@ -23,13 +22,18 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
 
     // Physics variables for Jetpack Joyride style movement
     private var velocityY = 0f
-    private val gravity = 3f  // Increased from 1.5f for a heavier feel
+    private val gravity = 3f  // Gravity applied to the player
     private val lift = -7f    // Upward force when boosting
 
     val width : Int
     val height : Int
 
-    var collisionBox : Rect
+    // Elliptical collision properties
+    var centerX: Float = 0f
+    var centerY: Float = 0f
+    val radiusX: Float
+    val radiusY: Float
+    val rotationAngle: Float = 15.0f // The angle to tilt the ellipse, in degrees
 
     init {
         // Load and scale the default player sprite
@@ -49,13 +53,19 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
         width = bitmap.width
         height = bitmap.height
 
+        // Initialize ellipse properties
+        radiusX = width / 2.0f
+        radiusY = height / 2.0f
+
         maxY = screenHeight - bitmap.height
         minY = 0
 
         x = 75
         y = 50
 
-        collisionBox = Rect(x, y, width, height)
+        // Set initial center
+        centerX = x + radiusX
+        centerY = y + radiusY
     }
 
     fun update(isPowerUpActive: Boolean){
@@ -87,10 +97,8 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
             velocityY = 0f // Stop downward velocity at the floor
         }
 
-        // Update the collision box for the new position
-        collisionBox.left = x
-        collisionBox.top = y
-        collisionBox.right = x + width
-        collisionBox.bottom = y + height
+        // Update the ellipse center for the new position
+        centerX = x + radiusX
+        centerY = y + radiusY
     }
 }

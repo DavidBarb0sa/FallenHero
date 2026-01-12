@@ -30,6 +30,10 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
     private val enemies = ArrayList<Enemy>()
     private val shooterEnemies = ArrayList<ShooterEnemy>()
 
+    // UI Bitmaps
+    private lateinit var heartBitmap: Bitmap
+    private lateinit var heartlessBitmap: Bitmap
+
     private val bulletPool = ArrayList<Bullet>()
     private val maxBullets = 20
 
@@ -63,6 +67,14 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         horizontalLaser = HorizontalLaser(width) // Restore horizontal laser
         shield = Shield(context) // Shield effect
         shieldItem = ShieldItem(context, width, height) // The collectible shield item
+
+        // Load heart bitmaps for UI
+        val originalHeart = BitmapFactory.decodeResource(context.resources, R.drawable.heart)
+        val heartWidth = (originalHeart.width * 0.8f).toInt()
+        val heartHeight = (originalHeart.height * 0.8f).toInt()
+        heartBitmap = Bitmap.createScaledBitmap(originalHeart, heartWidth, heartHeight, false)
+        val originalHeartless = BitmapFactory.decodeResource(context.resources, R.drawable.heartless)
+        heartlessBitmap = Bitmap.createScaledBitmap(originalHeartless, heartWidth, heartHeight, false)
 
         for (i in 0 until maxBullets) {
             bulletPool.add(Bullet())
@@ -128,7 +140,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         if (!isPowerUpAvailable) {
             for (orb in orbs) {
                 orb.update()
-                if (Collision.checkPlayerCollision(player, orb.collisionBox)) {
+                if (Collision.checkPlayerEllipseCollision(player, orb.collisionBox)) {
                     if (orbsCollected < orbsNeededForPowerup) {
                         orbsCollected++
                     }
@@ -140,7 +152,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         // --- System 2: Shield Item Logic ---
         if (!player.hasShield) {
             shieldItem.update()
-            if (Collision.checkPlayerCollision(player, shieldItem.collisionBox)) {
+            if (Collision.checkPlayerEllipseCollision(player, shieldItem.collisionBox)) {
                 player.hasShield = true
                 shieldItem.reset()
             }
@@ -185,7 +197,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
                     continue
                 }
 
-                if (Collision.checkPlayerCollision(player, bullet.collisionBox)) {
+                if (Collision.checkPlayerEllipseCollision(player, bullet.collisionBox)) {
                     bullet.isActive = false
                     handlePlayerDamage()
                 }
@@ -212,7 +224,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         if (!destroyed && verticalLaser.isActive && verticalLaser.collisionRect != null && Rect.intersects(verticalLaser.collisionRect!!, enemyBox)) {
             triggerExplosion(enemyX, enemyY); score += 100; destroyed = true
         }
-        if (!destroyed && Collision.checkPlayerCollision(player, enemyBox)) {
+        if (!destroyed && Collision.checkPlayerEllipseCollision(player, enemyBox)) {
             triggerExplosion(enemyX, enemyY); destroyed = true
             handlePlayerDamage()
         }
@@ -245,20 +257,30 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
 
         // Draw collectibles
         if (!isPowerUpAvailable) {
-            for (orb in orbs) canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
+            for (orb in orbs) {
+                canvas.drawBitmap(orb.bitmap, orb.x.toFloat(), orb.y.toFloat(), paint)
+            }
         }
         if (!player.hasShield) {
             canvas.drawBitmap(shieldItem.bitmap, shieldItem.x.toFloat(), shieldItem.y.toFloat(), paint)
         }
         
-        for (enemy in enemies) canvas.drawBitmap(enemy.bitmap, enemy.x.toFloat(), enemy.y.toFloat(), paint)
-        for (shooter in shooterEnemies) canvas.drawBitmap(shooter.bitmap, shooter.x.toFloat(), shooter.y.toFloat(), paint)
+        for (enemy in enemies) {
+            canvas.drawBitmap(enemy.bitmap, enemy.x.toFloat(), enemy.y.toFloat(), paint)
+        }
+        for (shooter in shooterEnemies) {
+            canvas.drawBitmap(shooter.bitmap, shooter.x.toFloat(), shooter.y.toFloat(), paint)
+        }
         
+        // Draw player sprite
         canvas.drawBitmap(player.bitmap, player.x.toFloat(), player.y.toFloat(), paint)
+
         shield.draw(canvas, player, paint)
         
         for (bullet in bulletPool) {
-            bullet.draw(canvas)
+            if(bullet.isActive) {
+                bullet.draw(canvas)
+            }
         }
         
         // Draw both lasers
@@ -277,13 +299,26 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         paint.textSize = 60f
         canvas.drawText("Score: $score", 50f, 80f, paint)
 
-        val livesText = "Vidas: ${player.health}"
-        val textWidth = paint.measureText(livesText)
-        canvas.drawText(livesText, screenWidth - textWidth - 50f, 80f, paint)
+        // Draw hearts for player health
+        val heartMargin = 10f // Reduced margin to bring hearts closer
+        val heartWidth = heartBitmap.width.toFloat()
+        val startX = screenWidth - 50f - (3 * (heartWidth + heartMargin))
+
+        for (i in 0 until 3) {
+            val xPos = startX + i * (heartWidth + heartMargin)
+            val yPos = 40f // Align with score roughly
+            
+            val bitmapToDraw = if (i < player.health) {
+                heartBitmap
+            } else {
+                heartlessBitmap
+            }
+            canvas.drawBitmap(bitmapToDraw, xPos, yPos, paint)
+        }
 
         val barHeight = 20f
-        val barMarginHorizontal = 100f
-        val barMarginVertical = 10f
+        val barMarginHorizontal = 500f
+        val barMarginVertical = 50f
         val barWidth = screenWidth - (barMarginHorizontal * 2)
         val energyPercentage = verticalLaser.getEnergyPercentage()
         paint.color = Color.GRAY

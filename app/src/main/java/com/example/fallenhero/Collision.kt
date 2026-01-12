@@ -1,53 +1,46 @@
 package com.example.fallenhero
 
 import android.graphics.Rect
-import kotlin.math.cos
-import kotlin.math.sin
 
 object Collision {
-    private const val PLAYER_HITBOX_ANGLE_DEGREES = 15f
 
-    // --- Optimization: Pre-calculate constant values ---
-    private val angleRad = -Math.toRadians(PLAYER_HITBOX_ANGLE_DEGREES.toDouble())
-    private val cosAngle = cos(angleRad).toFloat()
-    private val sinAngle = sin(angleRad).toFloat()
-    // -----------------------------------------------------
+    /**
+     * Checks for collision between the player's rotated elliptical hitbox and a rectangular object.
+     */
+    fun checkPlayerEllipseCollision(player: Player, rect: Rect): Boolean {
+        // Find the closest point on the rectangle to the center of the ellipse
+        val closestX = clamp(player.centerX, rect.left.toFloat(), rect.right.toFloat())
+        val closestY = clamp(player.centerY, rect.top.toFloat(), rect.bottom.toFloat())
 
-    fun checkPlayerCollision(player: Player, other: Rect): Boolean {
-        // --- Optimization: Broad-Phase Check ---
-        // First, do a cheap check to see if the simple bounding boxes are even close.
-        // If not, we can exit immediately without doing expensive math.
-        if (!Rect.intersects(player.collisionBox, other)) {
-            return false
-        }
-        // ----------------------------------------
+        // --- Start: Rotation Logic ---
 
-        // --- Narrow-Phase Check (The expensive math) ---
-        // This part now only runs if the objects are close to each other.
+        // Translate the closest point so that the ellipse's center is the origin
+        val translatedX = closestX - player.centerX
+        val translatedY = closestY - player.centerY
 
-        val ellipseCenterX = player.x + player.width / 2f
-        val ellipseCenterY = player.y + player.height / 2f
-        val ellipseRadiusX = player.width / 2f
-        val ellipseRadiusY = player.height / 2f
+        // Convert the player's rotation angle to radians
+        val angleRad = Math.toRadians(player.rotationAngle.toDouble())
+        val cosAngle = Math.cos(angleRad).toFloat()
+        val sinAngle = Math.sin(angleRad).toFloat()
 
-        val translatedRectCenterX = other.exactCenterX() - ellipseCenterX
-        val translatedRectCenterY = other.exactCenterY() - ellipseCenterY
+        // "Un-rotate" the translated point to align it with the ellipse's axes
+        val unrotatedX = translatedX * cosAngle + translatedY * sinAngle
+        val unrotatedY = -translatedX * sinAngle + translatedY * cosAngle
 
-        val rotatedRectCenterX = translatedRectCenterX * cosAngle - translatedRectCenterY * sinAngle
-        val rotatedRectCenterY = translatedRectCenterX * sinAngle + translatedRectCenterY * cosAngle
+        // --- End: Rotation Logic ---
 
-        val rectHalfWidth = other.width() / 2f
-        val rectHalfHeight = other.height() / 2f
+        // Use the standard ellipse equation on the un-rotated point
+        // (x/a)^2 + (y/b)^2 <= 1
+        val distanceSquared = (unrotatedX * unrotatedX) / (player.radiusX * player.radiusX) +
+                              (unrotatedY * unrotatedY) / (player.radiusY * player.radiusY)
 
-        val closestX = rotatedRectCenterX.coerceIn(-rectHalfWidth, rectHalfWidth)
-        val closestY = rotatedRectCenterY.coerceIn(-rectHalfHeight, rectHalfHeight)
+        return distanceSquared <= 1
+    }
 
-        val distanceX = rotatedRectCenterX - closestX
-        val distanceY = rotatedRectCenterY - closestY
-
-        // Optimization: Using x*x is faster than x.pow(2)
-        val ellipseEquationResult = (distanceX * distanceX) / (ellipseRadiusX * ellipseRadiusX) + (distanceY * distanceY) / (ellipseRadiusY * ellipseRadiusY)
-
-        return ellipseEquationResult <= 1
+    /**
+     * Helper function to clamp a value between a minimum and maximum.
+     */
+    private fun clamp(value: Float, min: Float, max: Float): Float {
+        return Math.max(min, Math.min(max, value))
     }
 }

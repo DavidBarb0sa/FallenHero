@@ -28,7 +28,7 @@ object SoundManager {
     }
 
     fun playExplosion() {
-        soundPool.play(soundIdExplosion, 1f, 1f, 0, 0, 1f)
+        soundPool.play(soundIdExplosion, 1f, 1f, 0, 0, 1f) // Corrected to max volume
     }
 
     fun playGameOver() {
