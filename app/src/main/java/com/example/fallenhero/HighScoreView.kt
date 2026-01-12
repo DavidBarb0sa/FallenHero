@@ -16,11 +16,11 @@ import com.google.firebase.firestore.Query
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.ui.Alignment
 
 
 data class ScoreEntry(val name: String = "Player", val score: Int = 0)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HighScoresView(navController: NavController) {
 
@@ -52,48 +52,49 @@ fun HighScoresView(navController: NavController) {
             contentScale = ContentScale.FillBounds
         )
 
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    title = { Text("High Scores") },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Voltar",
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White
-                    )
-                )
+        // --- Highscore Title Added ---
+        Image(
+            painter = painterResource(id = R.drawable.highscore),
+            contentDescription = "Highscore Title",
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .height(120.dp)
+        )
 
-            }
-        ) { padding ->
+        // --- Standalone Back Button ---
+        IconButton(
+            onClick = {
+                navController.navigate("home") {
+                    popUpTo("home") { inclusive = true }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Voltar",
+                tint = Color.White
+            )
+        }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(scores) { entry ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(entry.name, color = Color.White)
-                        Text(entry.score.toString(), color = Color.White)
-                    }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 110.dp) // Increased to make space for the larger title
+        ) { 
+            items(scores) {
+                entry ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(entry.name, color = Color.White)
+                    Text(entry.score.toString(), color = Color.White)
                 }
             }
         }

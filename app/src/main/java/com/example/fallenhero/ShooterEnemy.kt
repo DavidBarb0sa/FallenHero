@@ -72,13 +72,12 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
         return shootCooldown <= 0 && distanceToPlayer > minShootingDistance
     }
 
-    fun shoot(player: Player): Bullet {
+    /**
+     * This function simply resets the cooldown timer after a shot has been fired.
+     * It no longer creates or returns any data.
+     */
+    fun onShotFired() {
         shootCooldown = shootInterval
-        val startX = x.toFloat()
-        val startY = y.toFloat() + height / 2f
-        val targetX = player.x.toFloat() + player.width / 2f
-        val targetY = player.y.toFloat() + player.height / 2f
-        return Bullet(startX, startY, targetX, targetY)
     }
 
     private fun reset() {

@@ -35,6 +35,18 @@ fun HomeView (
             contentDescription = "background",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds)
+
+        // --- Game Title Added ---
+        Image(
+            painter = painterResource(id = R.drawable.fallenhero),
+            contentDescription = "Game Title",
+            modifier = Modifier
+                .align(Alignment.TopCenter) // Position this element at the top center
+                .padding(top = 32.dp)       // Add some space from the top edge
+                .width(350.dp)              // Give the title a nice width
+        )
+        // -------------------------
+
         Column(
             modifier = Modifier.padding(40.dp)
         ) {
