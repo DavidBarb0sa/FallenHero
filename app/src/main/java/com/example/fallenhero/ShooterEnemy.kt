@@ -17,9 +17,14 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
     val height: Int
     var collisionBox: Rect
 
+    // Hitbox Adjustment
+    private val hitboxInsetX = 40 // Shrinks the hitbox from the left and right
+    private val hitboxInsetTop = 50 // Shrinks the hitbox from the top
+
     // Shooting mechanics
     private var shootCooldown = 0
     private val shootInterval = 120 // Approx. 2 seconds (120 frames at 60fps)
+    private val minShootingDistance = 250 // Don't shoot if closer than this on the X-axis
     private val random = Random()
 
     init {
@@ -30,12 +35,17 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
         bitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, false)
 
         x = screenWidth
-        // Spawn on the ground
-        y = screenHeight - height
+        y = screenHeight - height + 50
         speed = random.nextInt(10) + 10
 
-        collisionBox = Rect(x, y, x + width, y + height)
-        // Start with a random cooldown so they don't all fire at once
+        // Initialize the collision box with the insets
+        collisionBox = Rect(
+            x + hitboxInsetX,
+            y + hitboxInsetTop,
+            x + width - hitboxInsetX,
+            y + height
+        )
+
         shootCooldown = random.nextInt(shootInterval)
     }
 
@@ -46,26 +56,24 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
             reset()
         }
 
-        // Update collision box
-        collisionBox.left = x
-        collisionBox.top = y
-        collisionBox.right = x + width
+        // Update collision box with the insets
+        collisionBox.left = x + hitboxInsetX
+        collisionBox.top = y + hitboxInsetTop
+        collisionBox.right = x + width - hitboxInsetX
         collisionBox.bottom = y + height
 
-        // Countdown the shoot timer
         if (shootCooldown > 0) {
             shootCooldown--
         }
     }
 
-    fun canShoot(): Boolean {
-        return shootCooldown <= 0
+    fun canShoot(player: Player): Boolean {
+        val distanceToPlayer = this.x - player.x
+        return shootCooldown <= 0 && distanceToPlayer > minShootingDistance
     }
 
     fun shoot(player: Player): Bullet {
-        // Reset cooldown after shooting
         shootCooldown = shootInterval
-        // Create a bullet starting from the enemy's center, aimed at the player's center
         val startX = x.toFloat()
         val startY = y.toFloat() + height / 2f
         val targetX = player.x.toFloat() + player.width / 2f
@@ -75,8 +83,7 @@ class ShooterEnemy(context: Context, private val screenWidth: Int, private val s
 
     private fun reset() {
         x = screenWidth + random.nextInt(200)
-        // Respawn on the ground
-        y = screenHeight - height
+        y = screenHeight - height + 50
         speed = random.nextInt(10) + 10
     }
 }

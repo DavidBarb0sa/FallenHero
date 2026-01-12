@@ -22,7 +22,7 @@ class Bullet(startX: Float, startY: Float, targetX: Float, targetY: Float) {
         val dx = targetX - startX
         val dy = targetY - startY
         val distance = sqrt(dx * dx + dy * dy)
-        val speed = 20f
+        val speed = 30f
 
         velocityX = (dx / distance) * speed
         velocityY = (dy / distance) * speed

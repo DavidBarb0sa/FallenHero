@@ -22,8 +22,8 @@ class Player(context: Context, screenWidth: Int, screenHeight: Int) {
 
     // Physics variables for Jetpack Joyride style movement
     private var velocityY = 0f
-    private val gravity = 1.5f  // Force pulling the player down
-    private val lift = -4f      // Upward force when boosting
+    private val gravity = 3f  // Increased from 1.5f for a heavier feel
+    private val lift = -7f      // Upward force when boosting
 
     val width : Int
     val height : Int
