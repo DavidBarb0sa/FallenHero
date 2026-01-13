@@ -4,7 +4,6 @@ import android.content.Context
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,20 +47,21 @@ fun GameOverView(score: Int, navController: NavController, context: Context) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Adiciona a imagem de fundo
+        // Imagem de fundo
         Image(
             painter = painterResource(id = R.drawable.gameoverbg),
-            contentDescription = "Game Over Background",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentDescription = "Game Over",
+            contentScale = ContentScale.Fit, // Alterado para Fit para garantir que a imagem cabe inteira
+            modifier = Modifier.fillMaxSize()
         )
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // O texto "GAME OVER" foi removido
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp)
+        ) {
             Text("Score: $score", fontSize = 32.sp, color = Color.White)
             Spacer(modifier = Modifier.height(50.dp))
             Button(onClick = {
-                SoundManager.stopAll() // Stop all sounds
+                SoundManager.stopAll() // Para todos os sons
                 navController.navigate("home") {
                     popUpTo("home") { inclusive = true }
                 }
@@ -90,7 +90,7 @@ fun GameOverView(score: Int, navController: NavController, context: Context) {
                     Button(onClick = {
                         saveHighScore(context, score, playerName.ifBlank { "Jogador" })
                         showNameDialog = false
-                        SoundManager.stopAll() // Stop all sounds
+                        SoundManager.stopAll() // Para todos os sons
                         navController.navigate("home")
                     }) {
                         Text("Guardar")
@@ -124,7 +124,7 @@ fun saveHighScore(context: Context, newScore: Int, playerName: String? = null) {
                     )
                     docRef.set(data)
                         .addOnSuccessListener { Log.d("FIREBASE", "Score atualizado: $newScore") }
-                        .addOnFailureListener { Log.e("FIREBASE", "Erro ao atualizar", it) }
+                        .addOnFailureListener { e -> Log.e("FIREBASE", "Erro ao atualizar", e) }
                 } else {
                     Log.d("FIREBASE", "Score não é maior ($newScore <= $oldScore)")
                 }
@@ -136,9 +136,8 @@ fun saveHighScore(context: Context, newScore: Int, playerName: String? = null) {
                 )
                 docRef.set(data)
                     .addOnSuccessListener { Log.d("FIREBASE", "Score criado: $newScore") }
-                    .addOnFailureListener { Log.e("FIREBASE", "Erro ao criar score", it) }
+                    .addOnFailureListener { e -> Log.e("FIREBASE", "Erro ao criar score", e) }
             }
         }
-        // Linha corrigida
         .addOnFailureListener { e -> Log.e("FIREBASE", "Erro ao ler documento", e) }
 }

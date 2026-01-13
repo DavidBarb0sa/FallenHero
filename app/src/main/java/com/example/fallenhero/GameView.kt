@@ -226,10 +226,10 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         var destroyed = false
 
         if (horizontalLaser.isActive && horizontalLaser.collisionRect != null && Rect.intersects(horizontalLaser.collisionRect!!, enemyBox)) {
-            triggerExplosion(enemyX, enemyY); score += 150; destroyed = true
+            triggerExplosion(enemyX, enemyY, playSound = true); score += 150; destroyed = true
         }
         if (!destroyed && verticalLaser.isActive && verticalLaser.collisionRect != null && Rect.intersects(verticalLaser.collisionRect!!, enemyBox)) {
-            triggerExplosion(enemyX, enemyY); score += 100; destroyed = true
+            triggerExplosion(enemyX, enemyY, playSound = true); score += 100; destroyed = true
         }
         if (!destroyed && Collision.checkPlayerEllipseCollision(player, enemyBox)) {
             destroyed = true // Enemy is always destroyed on collision with player
@@ -238,8 +238,8 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
                 // Shield takes the hit, play only shield sound
                 handlePlayerDamage()
             } else {
-                // No shield, trigger explosion and then take damage
-                triggerExplosion(enemyX, enemyY)
+                // No shield, trigger silent explosion and then take damage
+                triggerExplosion(enemyX, enemyY, playSound = false)
                 handlePlayerDamage()
             }
         }
@@ -257,6 +257,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
             player.hasShield = false
             SoundManager.playShield() // Play sound when shield is hit
         } else {
+            SoundManager.playHurt() // Play hurt sound
             player.health--
             if (player.health <= 0 && !isGameOver) {
                 triggerGameOver()
@@ -373,11 +374,14 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         return true
     }
 
-    private fun triggerExplosion(x: Int, y: Int) {
+    private fun triggerExplosion(x: Int, y: Int, playSound: Boolean = true) {
         boom.isOnScreen = true
+        val yOffset = 50 // Makes the explosion appear a bit higher
         boom.x = x
-        boom.y = y
-        SoundManager.playExplosion()
+        boom.y = y - yOffset
+        if (playSound) {
+            SoundManager.playExplosion()
+        }
     }
 
     private fun triggerGameOver() {
