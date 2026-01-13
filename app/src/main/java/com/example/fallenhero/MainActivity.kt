@@ -13,6 +13,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.fallenhero.ui.theme.FallenHeroTheme
+import com.example.fallenhero.view.GameOverView
+import com.example.fallenhero.view.GameScreenView
+import com.example.fallenhero.view.HighScoresView
+import com.example.fallenhero.view.HomeView
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -36,7 +40,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                     ){
                         composable("home"){
-                            HomeView(modifier = Modifier,
+                            HomeView(
+                                modifier = Modifier,
                                 navController = navController
                             )
                         }
