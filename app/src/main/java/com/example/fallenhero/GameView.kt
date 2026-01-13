@@ -70,8 +70,9 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
 
         // Load heart bitmaps for UI
         val originalHeart = BitmapFactory.decodeResource(context.resources, R.drawable.heart)
-        val heartWidth = (originalHeart.width * 0.8f).toInt()
-        val heartHeight = (originalHeart.height * 0.8f).toInt()
+        val scaleFactor = 0.6f // Reduced scale factor
+        val heartWidth = (originalHeart.width * scaleFactor).toInt()
+        val heartHeight = (originalHeart.height * scaleFactor).toInt()
         heartBitmap = Bitmap.createScaledBitmap(originalHeart, heartWidth, heartHeight, false)
         val originalHeartless = BitmapFactory.decodeResource(context.resources, R.drawable.heartless)
         heartlessBitmap = Bitmap.createScaledBitmap(originalHeartless, heartWidth, heartHeight, false)
@@ -131,8 +132,12 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         player.update(horizontalLaser.isActive)
 
         verticalLaser.update(isFlying, player)
-        horizontalLaser.update(player)
         shield.isActive = player.hasShield
+
+        // Check if the horizontal laser just deactivated to stop the sound
+        if (horizontalLaser.update(player)) {
+            SoundManager.stopLaserPowerUp()
+        }
 
         // --- System 1: Orb Collection for Horizontal Laser ---
         isPowerUpAvailable = orbsCollected >= orbsNeededForPowerup
@@ -154,6 +159,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
             shieldItem.update()
             if (Collision.checkPlayerEllipseCollision(player, shieldItem.collisionBox)) {
                 player.hasShield = true
+                SoundManager.playShield() // Play sound on pickup
                 shieldItem.reset()
             }
         }
@@ -181,6 +187,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
                 val bullet = bulletPool.firstOrNull { !it.isActive }
                 if (bullet != null) {
                     bullet.reset(shooter, player)
+                    SoundManager.playLaser() // Play sound on shoot
                     shooter.onShotFired()
                 }
             }
@@ -225,8 +232,16 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
             triggerExplosion(enemyX, enemyY); score += 100; destroyed = true
         }
         if (!destroyed && Collision.checkPlayerEllipseCollision(player, enemyBox)) {
-            triggerExplosion(enemyX, enemyY); destroyed = true
-            handlePlayerDamage()
+            destroyed = true // Enemy is always destroyed on collision with player
+
+            if (player.hasShield) {
+                // Shield takes the hit, play only shield sound
+                handlePlayerDamage()
+            } else {
+                // No shield, trigger explosion and then take damage
+                triggerExplosion(enemyX, enemyY)
+                handlePlayerDamage()
+            }
         }
 
         if (destroyed) {
@@ -240,6 +255,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
     private fun handlePlayerDamage() {
         if (player.hasShield) {
             player.hasShield = false
+            SoundManager.playShield() // Play sound when shield is hit
         } else {
             player.health--
             if (player.health <= 0 && !isGameOver) {
@@ -300,7 +316,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
         canvas.drawText("Score: $score", 50f, 80f, paint)
 
         // Draw hearts for player health
-        val heartMargin = 10f // Reduced margin to bring hearts closer
+        val heartMargin = 5f // Reduced margin to bring hearts closer
         val heartWidth = heartBitmap.width.toFloat()
         val startX = screenWidth - 50f - (3 * (heartWidth + heartMargin))
 
@@ -341,7 +357,8 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
                 // Check for orb power-up button click
                 if (powerUpButtonRect.contains(touchX.toInt(), touchY.toInt())) {
                     if (isPowerUpAvailable) {
-                        horizontalLaser.activate() // It activates the laser, as it should
+                        horizontalLaser.activate()
+                        SoundManager.playLaserPowerUp() // Start looping sound
                         orbsCollected = 0
                         isPowerUpAvailable = false
                     }
@@ -366,6 +383,7 @@ class GameView(context: Context, private val screenWidth: Int, private val scree
     private fun triggerGameOver() {
         isGameOver = true
         isPlaying = false
+        SoundManager.stopAll() // Stop all sounds before playing game over sounds
         SoundManager.playGameOver()
         post { onGameOver?.invoke(score) }
     }

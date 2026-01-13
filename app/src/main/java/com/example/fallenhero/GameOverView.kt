@@ -3,6 +3,7 @@ package com.example.fallenhero
 import android.content.Context
 import android.provider.Settings
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -42,17 +45,23 @@ fun GameOverView(score: Int, navController: NavController, context: Context) {
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        // Adiciona a imagem de fundo
+        Image(
+            painter = painterResource(id = R.drawable.gameoverbg),
+            contentDescription = "Game Over Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("GAME OVER", fontSize = 48.sp, color = Color.Red)
-            Spacer(modifier = Modifier.height(30.dp))
+            // O texto "GAME OVER" foi removido
             Text("Score: $score", fontSize = 32.sp, color = Color.White)
             Spacer(modifier = Modifier.height(50.dp))
             Button(onClick = {
+                SoundManager.stopAll() // Stop all sounds
                 navController.navigate("home") {
                     popUpTo("home") { inclusive = true }
                 }
@@ -81,6 +90,7 @@ fun GameOverView(score: Int, navController: NavController, context: Context) {
                     Button(onClick = {
                         saveHighScore(context, score, playerName.ifBlank { "Jogador" })
                         showNameDialog = false
+                        SoundManager.stopAll() // Stop all sounds
                         navController.navigate("home")
                     }) {
                         Text("Guardar")
@@ -129,5 +139,6 @@ fun saveHighScore(context: Context, newScore: Int, playerName: String? = null) {
                     .addOnFailureListener { Log.e("FIREBASE", "Erro ao criar score", it) }
             }
         }
-        .addOnFailureListener { Log.e("FIREBASE", "Erro ao ler documento", it) }
+        // Linha corrigida
+        .addOnFailureListener { e -> Log.e("FIREBASE", "Erro ao ler documento", e) }
 }

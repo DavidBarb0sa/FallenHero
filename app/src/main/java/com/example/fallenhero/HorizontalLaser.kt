@@ -24,34 +24,31 @@ class HorizontalLaser(private val screenWidth: Int) {
         if (!isActive) {
             isActive = true
             currentDuration = totalDuration
-            // You might want to play a sound effect here
-            // SoundManager.playPowerUpSound()
         }
     }
 
-    fun update(player: Player) {
+    /**
+     * Updates the laser's state.
+     * @return true if the laser just deactivated, false otherwise.
+     */
+    fun update(player: Player): Boolean {
         if (isActive) {
-            // Countdown the duration
             currentDuration--
 
             if (currentDuration <= 0) {
-                // Deactivate when time runs out
                 isActive = false
                 collisionRect = null
+                return true // Signal that the laser just turned off
             } else {
-                // This offset will move the laser up. Adjust the value for perfect alignment.
                 val yOffset = 55f
-
-                // Update the laser's position to follow the player, including the offset
                 val laserTop = player.y + (player.height / 2f) - (laserHeight / 2f) - yOffset
                 val laserBottom = laserTop + laserHeight
-                
-                // The laser starts from the player and goes to the edge of the screen
                 collisionRect = Rect(player.x + player.width, laserTop.toInt(), screenWidth, laserBottom.toInt())
             }
         } else {
             collisionRect = null
         }
+        return false // Laser did not turn off on this frame
     }
 
     fun draw(canvas: Canvas) {

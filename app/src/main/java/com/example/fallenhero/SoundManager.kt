@@ -10,6 +10,11 @@ object SoundManager {
     var soundIdExplosion = 0
     var soundIdGameOver = 0
     var soundIdGameOverMusic = 0
+    var soundIdLaser = 0
+    var soundIdLaserPowerUp = 0
+    var soundIdShield = 0 // New ID for the shield sound
+
+    private var streamIdLaserPowerUp = 0 // To control the looping sound
 
     fun init(context: Context) {
         val audioAttributes = AudioAttributes.Builder()
@@ -18,17 +23,42 @@ object SoundManager {
             .build()
 
         soundPool = SoundPool.Builder()
-            .setMaxStreams(5)
+            .setMaxStreams(6) // Increased streams for more sounds
             .setAudioAttributes(audioAttributes)
             .build()
 
         soundIdExplosion = soundPool.load(context, R.raw.shoot, 1)
         soundIdGameOver = soundPool.load(context, R.raw.lego, 1)
         soundIdGameOverMusic = soundPool.load(context, R.raw.gameover, 1)
+        soundIdLaser = soundPool.load(context, R.raw.laser, 1)
+        soundIdLaserPowerUp = soundPool.load(context, R.raw.laserpowerup, 1)
+        soundIdShield = soundPool.load(context, R.raw.shield, 1) // Load the new sound
     }
 
     fun playExplosion() {
-        soundPool.play(soundIdExplosion, 1f, 1f, 0, 0, 1f) // Corrected to max volume
+        soundPool.play(soundIdExplosion, 1f, 1f, 0, 0, 1f)
+    }
+
+    fun playLaser() {
+        soundPool.play(soundIdLaser, 0.5f, 0.5f, 0, 0, 1f)
+    }
+
+    fun playLaserPowerUp() {
+        if (streamIdLaserPowerUp == 0) { // Prevent multiple loops
+            streamIdLaserPowerUp = soundPool.play(soundIdLaserPowerUp, 0.7f, 0.7f, 1, -1, 1f) // loop = -1
+        }
+    }
+
+    fun stopLaserPowerUp() {
+        if (streamIdLaserPowerUp != 0) {
+            soundPool.stop(streamIdLaserPowerUp)
+            streamIdLaserPowerUp = 0
+        }
+    }
+
+    // New function to play the shield sound
+    fun playShield() {
+        soundPool.play(soundIdShield, 0.8f, 0.8f, 0, 0, 1f) // Play at 80% volume
     }
 
     fun playGameOver() {
