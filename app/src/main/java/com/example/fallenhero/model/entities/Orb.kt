@@ -20,7 +20,6 @@ class Orb(context: Context, private val screenWidth: Int, private val screenHeig
     private val random = Random()
 
     init {
-        // Assumes you have an 'orb.png' file in your res/drawable folder
         val originalBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.orb)
         val scaleFactor = 0.3f
         width = (originalBitmap.width * scaleFactor).toInt()

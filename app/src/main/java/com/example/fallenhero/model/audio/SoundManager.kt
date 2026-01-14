@@ -8,7 +8,7 @@ import android.util.Log
 import com.example.fallenhero.R
 
 object SoundManager {
-    // --- SoundPool para efeitos sonoros curtos (método anterior que funcionava) ---
+    // --- SoundPool para efeitos sonoros curtos ---
     private lateinit var soundPool: SoundPool
     private var soundIdExplosion = 0
     private var soundIdLego = 0

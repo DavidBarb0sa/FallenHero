@@ -20,13 +20,11 @@ class Laser(private val screenHeight: Int) {
     private val rechargeRate = 0.2f
 
     // Recharge cooldown mechanics
-    private val rechargeCooldownDuration = 15 // Recharges after 15 frames
+    private val rechargeCooldownDuration = 15
     private var rechargeCooldownTimer = 0
 
     fun update(isBoosting: Boolean, player: Player) {
         if (isBoosting) {
-            // Player is touching the screen.
-            // Reset the recharge cooldown timer every time the player boosts.
             rechargeCooldownTimer = rechargeCooldownDuration
 
             if (currentEnergy > 0) {

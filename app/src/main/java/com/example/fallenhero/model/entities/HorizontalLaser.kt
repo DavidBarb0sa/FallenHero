@@ -12,7 +12,7 @@ class HorizontalLaser(private val screenWidth: Int) {
         private set
 
     private val laserHeight = 20f
-    private val totalDuration = 180 // Approx 3 seconds (180 frames / 60fps)
+    private val totalDuration = 180
     private var currentDuration = 0
 
     private val paint = Paint().apply {
